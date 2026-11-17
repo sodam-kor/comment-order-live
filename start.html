@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수업 앱 바로가기</title>
+<style>
+  :root { --bg:#f4f6fa; --card:#fff; --ink:#1d2433; --muted:#5d6679; --line:#e2e6ef; --brand:#3b5bdb; --a:#3b5bdb; --b:#e8590c; --c:#0c8599; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151c; --card:#1b2029; --ink:#e8ebf2; --muted:#9aa3b5; --line:#2c3340; --brand:#7b93ff; --a:#7b93ff; --b:#ff922b; --c:#3bc9db; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; line-height:1.5; }
+  .wrap { max-width:1100px; margin:0 auto; padding:20px 16px; }
+  h1 { margin:0 0 4px; font-size:1.5rem; } .muted { color:var(--muted); font-size:.92rem; }
+  .classbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-top:14px; }
+  .classbar b { margin-right:4px; }
+  .classbar button { min-width:64px; }
+  .classbar button.on { background:var(--brand); color:#fff; border-color:var(--brand); font-weight:700; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-top:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; border-top:6px solid var(--k); }
+  .card h2 { margin:0; font-size:1.15rem; } .when { color:var(--k); font-weight:700; font-size:.9rem; }
+  a.btn { display:block; text-align:center; text-decoration:none; padding:12px; border-radius:10px; margin:10px 0 0; font-weight:700; border:1px solid var(--k); color:#fff; background:var(--k); }
+  .row { display:flex; gap:8px; margin-top:10px; } .row button { flex:1; }
+  button { font:inherit; padding:9px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  .small { font-size:.85rem; } .small a { color:var(--muted); }
+  .qr { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; z-index:9; padding:16px; }
+  .qr.on { display:flex; } .qrbox { background:#fff; color:#111; border-radius:20px; padding:24px 28px; text-align:center; max-width:100%; }
+  .qrclass { font-size:3rem; font-weight:800; line-height:1.1; color:#3b5bdb; }
+  .qrbox h2 { margin:4px 0; font-size:1.6rem; } #qrcode { display:inline-block; margin:12px 0; }
+  #qrcode img, #qrcode canvas { width:min(62vmin,460px) !important; height:auto !important; }
+  .qrurl { font-size:.95rem; word-break:break-all; color:#555; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📚 실시간 수업 앱 바로가기</h1>
+  <p class="muted">중1 국어 4-(1) 매체와 의사소통 · 반을 고르면 그 반이 미리 선택된 학생 QR이 떠요.</p>
+
+  <div class="classbar">
+    <b>지금 수업하는 반</b>
+    <span id="classBtns"></span>
+    <span class="muted" style="flex:1 1 200px">이 컴퓨터에서 고른 반은 다음에 열 때도 기억돼요.</span>
+  </div>
+
+  <div class="grid">
+    <div class="card" style="--k:var(--b)">
+      <div class="when">2차시</div><h2>💬 댓글 주문형 라이브</h2>
+      <a class="btn" target="_blank" href="https://sodam-kor.github.io/comment-order-live/">교사로 열기</a>
+      <p class="muted" style="margin:6px 0 0">열린 화면 아래 "선생님(생산자)으로 들어가기" → 앱스스크립트 비밀번호</p>
+      <div class="row"><button data-app="a2">📱 학생 QR 띄우기</button><button data-copy="a2">🔗 학생 주소 복사</button></div>
+    </div>
+    <div class="card" style="--k:var(--a)">
+      <div class="when">3·4·7차시</div><h2>🃏 맥락 판정 라이브</h2>
+      <a class="btn" target="_blank" href="https://script.google.com/macros/s/AKfycbwJ4m17WVFxrR0q-cB-adzFnIrjJ1jEznK8J9V0DDzfsq7QHViyttTwxKw0vyOBnr5mNw/exec?page=teacher">교사로 열기</a>
+      <p class="muted" style="margin:6px 0 0">비밀번호: 앱스스크립트 스크립트 속성의 TEACHER_PASSWORD</p>
+      <div class="row"><button data-app="a1">📱 학생 QR 띄우기</button><button data-copy="a1">🔗 학생 주소 복사</button></div>
+    </div>
+    <div class="card" style="--k:var(--c)">
+      <div class="when">5·6차시 · 수행평가 ①</div><h2>📱 우리 반 미니 SNS</h2>
+      <a class="btn" target="_blank" href="https://mini-sns-1117-4509.web.app/teacher.html">교사로 열기</a>
+      <p class="muted" style="margin:6px 0 0">gmail 주소 + 미니 SNS용 비밀번호 · 들어가면 반 고르고 🔓 글쓰기 열기</p>
+      <div class="row"><button data-app="a3">📱 학생 QR 띄우기</button><button data-copy="a3">🔗 학생 주소 복사</button></div>
+    </div>
+  </div>
+  <!--PRIVATE-->
+  <p class="muted" style="margin-top:18px">💡 QR 화면에서 <b>F11</b>을 누르면 전체 화면으로 TV에 띄울 수 있어요. 닫기는 <b>Esc</b>.</p>
+</div>
+
+<div class="qr" id="qr"><div class="qrbox">
+  <div class="qrclass" id="qrClass"></div><h2 id="qrTitle"></h2>
+  <div>휴대폰 카메라로 찍어서 들어오세요</div>
+  <div id="qrcode"></div><div class="qrurl" id="qrUrl"></div>
+  <p><button id="qrClose">닫기 (Esc)</button></p>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  var CLASS_COUNT = 4, GRADE = 1;
+  var APPS = {
+    a1: { name: '맥락 판정 라이브', url: 'https://script.google.com/macros/s/AKfycbwJ4m17WVFxrR0q-cB-adzFnIrjJ1jEznK8J9V0DDzfsq7QHViyttTwxKw0vyOBnr5mNw/exec' },
+    a2: { name: '댓글 주문형 라이브', url: 'https://sodam-kor.github.io/comment-order-live/' },
+    a3: { name: '우리 반 미니 SNS', url: 'https://mini-sns-1117-4509.web.app/' }
+  };
+  function load() { try { return Number(localStorage.getItem('start_class')) || 0; } catch (e) { return 0; } }
+  function save(v) { try { localStorage.setItem('start_class', String(v)); } catch (e) {} }
+  var cls = load();
+  function studentUrl(key) { var u = APPS[key].url; return cls ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 'class=' + cls : u; }
+
+  function renderClass() {
+    var h = '';
+    for (var i = 1; i <= CLASS_COUNT; i++) h += '<button data-c="' + i + '" class="' + (cls === i ? 'on' : '') + '">' + i + '반</button> ';
+    h += '<button data-c="0" class="' + (cls === 0 ? 'on' : '') + '">반 선택 없음</button>';
+    document.getElementById('classBtns').innerHTML = h;
+    document.querySelectorAll('[data-app]').forEach(function (b) { b.textContent = '📱 ' + (cls ? cls + '반 ' : '') + '학생 QR 띄우기'; });
+    document.querySelectorAll('[data-copy]').forEach(function (b) { b.textContent = '🔗 ' + (cls ? cls + '반 ' : '') + '학생 주소 복사'; });
+  }
+  document.getElementById('classBtns').onclick = function (e) {
+    var c = e.target.getAttribute('data-c'); if (c == null) return;
+    cls = Number(c); save(cls); renderClass();
+  };
+
+  var qr = document.getElementById('qr');
+  document.querySelectorAll('[data-app]').forEach(function (b) {
+    b.onclick = function () {
+      var key = b.getAttribute('data-app'), url = studentUrl(key), box = document.getElementById('qrcode');
+      box.innerHTML = '';
+      if (window.QRCode) new QRCode(box, { text: url, width: 460, height: 460, correctLevel: QRCode.CorrectLevel.M });
+      else box.textContent = '(인터넷에 연결되어 있어야 QR이 보여요)';
+      document.getElementById('qrClass').textContent = cls ? GRADE + '학년 ' + cls + '반' : '';
+      document.getElementById('qrTitle').textContent = APPS[key].name;
+      document.getElementById('qrUrl').textContent = url;
+      qr.classList.add('on');
+    };
+  });
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.onclick = function () {
+      var url = studentUrl(b.getAttribute('data-copy')), t = b.textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+        .then(function () { b.textContent = '✅ 복사했어요'; }, function () { prompt('아래 주소를 복사하세요', url); })
+        .then(function () { setTimeout(renderClass, 1500); });
+    };
+  });
+  function closeQr() { qr.classList.remove('on'); }
+  document.getElementById('qrClose').onclick = closeQr;
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeQr(); });
+  qr.onclick = function (e) { if (e.target === qr) closeQr(); };
+  renderClass();
+</script>
+</body>
+</html>

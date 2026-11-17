@@ -209,7 +209,13 @@ function boot() {
   api('config').then(function (c) { CONFIG = c; }).catch(function () {}).then(function () {
     opts($('lgGrade'), CONFIG.GRADES, '학년'); opts($('lgClass'), range(1, CONFIG.CLASS_COUNT), '반'); opts($('lgNumber'), range(1, CONFIG.MAX_NUMBER), '번');
     if (CONFIG.GRADES.length === 1) $('lgGrade').value = CONFIG.GRADES[0];
+    // 반별 QR: 주소?class=3 → 3반을 미리 골라 둠
+    var pre = 0; try { pre = Number(new URLSearchParams(location.search).get('class')) || 0; } catch (e) {}
+    if (!(pre >= 1 && pre <= CONFIG.CLASS_COUNT)) pre = 0;
+    if (pre) { $('lgClass').value = pre; $('lgClass').insertAdjacentHTML('afterend', '<div class="muted">📱 ' + pre + '반 QR로 들어왔어요</div>'); }
     token = store('a2_token'); me = store('a2_profile');
+    if (pre) token = null; // 학생용 반별 QR 주소는 교사 기기에서 열어도 학생 화면으로
+    if (me && pre && Number(me.classNo) !== pre) me = null; // 다른 반 QR이면 이전 학생으로 자동 로그인하지 않음
     if (token) startTeacher(); else if (me && me.key) startStudent(); else show('loginView');
   });
 }
