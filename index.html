@@ -59,6 +59,15 @@
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
   .stat b { font-size: 1.5rem; display: block; }
+  .guide { border: 2px solid var(--brand); }
+  .guide-now { background: var(--brand-soft); border-radius: 10px; padding: 12px 14px; margin: 10px 0; font-size: 1.05rem; }
+  .steps { margin: 0; padding-left: 22px; color: var(--muted); }
+  .steps li { margin: 3px 0; }
+  .steps li.cur { color: var(--brand); font-weight: 700; }
+  .steps li.done { text-decoration: line-through; }
+  #timerOut { font-variant-numeric: tabular-nums; min-width: 48px; }
+  #timerOut.over { color: var(--bad); }
+  .qlist li { margin: 8px 0; } .qlist .muted { display: block; }
 </style>
 </head>
 <body>
@@ -119,6 +128,13 @@
       <button id="tabLive" class="on">진행</button><button id="tabReport">📊 참여 분석</button>
     </div>
     <div id="liveTab">
+      <div class="card guide" id="guideCard">
+        <div class="row"><h2 class="grow" style="margin:0">🧭 수업 순서 안내</h2>
+          <span class="muted" id="guideRound"></span>
+          <button id="timerBtn" class="ghost">⏱ 3분 타이머</button><b id="timerOut"></b></div>
+        <div id="guideNow" class="guide-now"></div>
+        <ol id="guideSteps" class="steps"></ol>
+      </div>
       <div class="card row">
         <span class="tag" id="tPhase"></span><span class="grow"></span>
         <button data-phase="comment">💬 댓글 받기</button><button data-phase="closed">🔒 댓글 닫기</button>
@@ -129,8 +145,13 @@
           <div class="card">
             <h2>새 회차 올리기 (생산자)</h2>
             <p class="muted">학생들이 고른 요청 댓글을 반영해서 다음 장면을 올려요. 올리면 새 회차의 댓글 받기가 바로 시작돼요.</p>
+            <div class="row" style="margin-top:6px"><span class="muted">📖 시작 글 불러오기:</span>
+              <button class="ghost" data-starter="0">전학 온 하람이</button><button class="ghost" data-starter="1">수상한 쪽지</button>
+              <button class="ghost" data-starter="2">말하는 강아지 콩이</button><button class="ghost" data-starter="3">반 대화방 실수</button></div>
             <label class="field" for="nText">장면 설명 / 이야기</label>
-            <textarea id="nText" maxlength="500" placeholder="예: [2회] 여러분의 요청대로, 주인공은 급식실에서 처음 보는 친구에게 말을 걸었어요…"></textarea>
+            <textarea id="nText" maxlength="500" placeholder="시작 글을 불러오거나, ✨ 반영해서 다음 회차 쓰기를 누르면 여기에 채워져요."></textarea>
+            <div class="row" style="margin-top:8px"><button id="fillReflectBtn" class="primary">✨ 반영해서 다음 회차 쓰기</button>
+              <span class="muted">✨를 누른 댓글이 글칸에 들어가요. 한두 문장만 덧붙이면 돼요.</span></div>
             <div class="row" style="margin-top:8px"><span class="muted">소재 불러오기(나이스):</span>
               <button class="ghost" data-idea="meal">🍱 오늘 급식</button><button class="ghost" data-idea="schedule">🗓 학교 행사</button></div>
             <label class="field">그림 (선택)</label>
@@ -283,7 +304,78 @@ $('neisBtn').onclick = function () {
   }).catch(function (e) { $('neisOut').textContent = e.message; });
 };
 $('neisOut').onclick = function (e) { var c = e.target.getAttribute('data-c'); if (c) { e.preventDefault(); pickClass(c); } };
-function tRefresh() { return api('a2State', { classNo: classNo, token: token }).then(function (d) { st = d; renderTeacher(); }).catch(fail); }
+function tRefresh() { return api('a2State', { classNo: classNo, token: token }).then(function (d) { st = d; renderTeacher(); renderGuide(); }).catch(fail); }
+
+// ───── 수업 순서 안내 · 시작 글 · 반영해서 다음 회차 쓰기 ─────
+var GOAL_ROUNDS = 3;
+var STARTERS = [
+  "[1회] 쉬는 시간, 전학 온 '하람'이가 창가 자리에 혼자 앉아 있어요. 다음 장면에서 하람이에게 무슨 일이 일어날까요? 댓글로 주문해 주세요!",
+  "[1회] 점심시간, 급식판 아래에서 '4교시가 끝나면 도서관 맨 뒤 책장을 봐.'라고 적힌 쪽지가 나왔어요. 누가, 왜 쪽지를 남겼을까요? 다음 장면을 댓글로 주문해 주세요!",
+  "[1회] 학교 앞 문구점 강아지 '콩이'가 갑자기 사람 말을 하기 시작했어요. 콩이의 첫마디는 무엇일까요? 댓글로 주문해 주세요!",
+  "[1회] 민준이가 친구에게만 보내려던 메시지를 실수로 반 전체 대화방에 보내 버렸어요. 대화방이 갑자기 조용해졌어요. 다음 장면에서 무슨 일이 일어날까요? 댓글로 주문해 주세요!"
+];
+var GUIDE_STEPS = [
+  '시작 글을 골라 1회차 올리기',
+  '학생들이 댓글·공감 (3분)',
+  '🔒 댓글 닫기 → 공감 많은 댓글에 ✨',
+  '✨ 반영해서 다음 회차 쓰기 → 🚀 올리기 (' + GOAL_ROUNDS + '회차까지 반복)',
+  '📊 참여 분석 탭에서 함께 분석',
+  '🪞 성찰 쓰기 → 특성 정리'
+];
+
+function guideState() {
+  var reflectedNow = st.comments.filter(function (c) { return c.round === st.round && c.reflected && !c.hidden; }).length;
+  if (!st.rounds.length) return { step: 0, msg: '아래 <b>📖 시작 글 불러오기</b>에서 이야기를 하나 고르고 <b>🚀 새 회차 올리기</b>를 누르세요. 그림은 없어도 돼요.' };
+  if (st.phase === 'reflection') return { step: 5, msg: '학생들이 성찰을 쓰고 있어요. 마지막에 상호 작용적 매체의 특성 세 가지를 정리해요: <b>실시간 반응 · 수용자 참여 · 쌍방향 소통</b>' };
+  if (st.phase === 'comment') return { step: 1, msg: '학생들이 ' + st.round + '회차에 요청 댓글을 달고 공감을 눌러요. <b>⏱ 3분 타이머</b>를 켜 두고, 시간이 되면 위의 <b>🔒 댓글 닫기</b>를 누르세요.' };
+  // 댓글 닫힘 / 대기
+  if (st.round >= GOAL_ROUNDS) return { step: 4, msg: GOAL_ROUNDS + '회차까지 끝났어요! 위의 <b>📊 참여 분석</b> 탭을 화면에 띄우고 질문 세 가지로 함께 분석한 뒤, <b>🪞 성찰 쓰기</b>를 누르세요.' };
+  if (!reflectedNow) return { step: 2, msg: '오른쪽 댓글 목록(공감순)에서 반영할 댓글에 <b>✨</b>를 누르세요. 공감 1등 댓글을 고르면 쉬워요.' };
+  return { step: 3, msg: '<b>✨ 반영해서 다음 회차 쓰기</b>를 누르면 고른 댓글이 글칸에 들어가요. "→" 뒤에 한두 문장만 덧붙이고 <b>🚀 새 회차 올리기</b>를 누르세요.' };
+}
+
+function renderGuide() {
+  var g = guideState();
+  $('guideNow').innerHTML = '👉 ' + g.msg;
+  $('guideRound').textContent = st.rounds.length ? '진행: ' + Math.min(st.round, GOAL_ROUNDS) + ' / ' + GOAL_ROUNDS + '회차' : '';
+  $('guideSteps').innerHTML = GUIDE_STEPS.map(function (s, i) {
+    return '<li class="' + (i === g.step ? 'cur' : i < g.step ? 'done' : '') + '">' + s + '</li>';
+  }).join('');
+}
+
+var timerEnd = 0, timerTick = null;
+$('timerBtn').onclick = function () {
+  if (timerTick) { clearInterval(timerTick); timerTick = null; $('timerOut').textContent = ''; $('timerBtn').textContent = '⏱ 3분 타이머'; return; }
+  timerEnd = Date.now() + 180000; $('timerBtn').textContent = '⏹ 타이머 끄기';
+  var tick = function () {
+    var left = Math.round((timerEnd - Date.now()) / 1000), out = $('timerOut');
+    out.classList.toggle('over', left <= 0);
+    if (left <= 0) { out.textContent = '시간 끝!'; clearInterval(timerTick); timerTick = null; $('timerBtn').textContent = '⏱ 3분 타이머'; toast('3분이 지났어요. 🔒 댓글 닫기를 눌러 주세요.'); return; }
+    out.textContent = Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2);
+  };
+  tick(); timerTick = setInterval(tick, 1000);
+};
+
+Array.prototype.forEach.call(document.querySelectorAll('[data-starter]'), function (b) {
+  b.onclick = function () {
+    var ta = $('nText');
+    if (ta.value.trim() && !confirm('글칸에 쓴 내용을 시작 글로 바꿀까요?')) return;
+    ta.value = STARTERS[Number(b.getAttribute('data-starter'))]; ta.focus();
+  };
+});
+
+$('fillReflectBtn').onclick = function () {
+  if (!st || !st.rounds.length) return toast('먼저 1회차를 올려 주세요. 시작 글을 불러오면 쉬워요.');
+  var picked = st.comments.filter(function (c) { return c.round === st.round && c.reflected && !c.hidden; });
+  if (!picked.length) return toast('먼저 오른쪽 댓글 목록에서 반영할 댓글에 ✨를 눌러 주세요.');
+  var ta = $('nText');
+  if (ta.value.trim() && !confirm('글칸에 쓴 내용을 바꿀까요?')) return;
+  var head = '[' + (st.round + 1) + '회] 여러분의 주문: ' + picked.map(function (c) { return '"' + c.text + '"(' + c.number + '번 ' + c.name + ')'; }).join(', ') + '\n→ ';
+  var tail = (st.round + 1 >= GOAL_ROUNDS) ? '\n\n(마지막 회차) 이야기가 어떻게 끝났으면 좋겠나요? 댓글로 주문해 주세요!' : '\n\n다음은 어떻게 될까요? 댓글로 주문해 주세요!';
+  ta.value = head + tail;
+  ta.focus(); ta.setSelectionRange(head.length, head.length);
+  ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
 
 var lastTRound = -1;
 function renderTeacher() {
@@ -373,6 +465,11 @@ function loadReport() {
       '<div class="stats"><div class="stat"><span class="muted">참여한 학생</span><b>' + r.participants + '명</b></div><div class="stat"><span class="muted">요청 댓글</span><b>' + tot.c + '개</b></div>' +
       '<div class="stat"><span class="muted">공감</span><b>' + tot.l + '번</b></div><div class="stat"><span class="muted">작품에 반영</span><b>' + tot.f + '개</b></div></div>' +
       (r.silent.length ? '<p class="muted">아직 댓글을 달지 않은 번호: ' + r.silent.join(', ') + '번</p>' : '') + '</div>' +
+      '<div class="card guide"><h2>💬 함께 이야기할 질문</h2><ol class="qlist">' +
+        '<li><b>이 이야기는 누가 만들었나요?</b><span class="muted">→ 생산자(선생님)와 수용자(우리 반)가 함께 만들었어요. 반영된 댓글 ' + tot.f + '개가 증거예요.</span></li>' +
+        '<li><b>공감 수는 어떤 댓글이 반영되는지에 어떤 영향을 주었나요?</b><span class="muted">→ 수용자와 수용자 사이에서도 소통이 일어나요. 공감을 가장 많이 받은 댓글을 아래에서 확인해요.</span></li>' +
+        '<li><b>책이나 TV 드라마였다면 무엇이 달랐을까요?</b><span class="muted">→ 기존 매체는 생산자가 일방적으로 전하지만, 상호 작용적 매체는 수용자의 반응이 빠르게 생산에 반영돼요.</span></li>' +
+      '</ol></div>' +
       '<div class="layout"><div class="card">' + barRows(r.byRound, 'comments', '회차별 댓글 수') + barRows(r.byRound, 'people', '회차별 참여 학생 수') + '</div>' +
       '<div class="card">' + barRows(r.byRound, 'likes', '회차별 공감 수') + barRows(r.byRound, 'reflected', '회차별 반영된 댓글') + '</div></div>' +
       '<div class="card"><h2>공감을 가장 많이 받은 댓글</h2>' + (r.top.length ? r.top.map(function (c) {
