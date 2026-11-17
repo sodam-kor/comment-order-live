@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>댓글 주문형 라이브</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #ffffff; --ink: #1d2433; --muted: #5d6679; --line: #e2e6ef;
+    --brand: #e8590c; --brand-ink: #ffffff; --brand-soft: #fff0e6;
+    --ok: #2b8a3e; --ok-soft: #e6f6ea; --bad: #c92a2a; --bad-soft: #fdecec; --warn: #b26a00; --warn-soft: #fff4e0;
+    --radius: 14px; --shadow: 0 1px 2px rgba(20,30,60,.06), 0 4px 14px rgba(20,30,60,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151c; --card: #1b2029; --ink: #e8ebf2; --muted: #9aa3b5; --line: #2c3340;
+      --brand: #ff922b; --brand-ink: #1a1006; --brand-soft: #3a2616;
+      --ok: #69db7c; --ok-soft: #1d3324; --bad: #ff8787; --bad-soft: #3a2224; --warn: #ffc078; --warn-soft: #3a2f1c; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; font-size: 16px; line-height: 1.55; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .wide { max-width: 1180px; }
+  h1 { font-size: 1.35rem; margin: 4px 0 12px; } h2 { font-size: 1.1rem; margin: 0 0 10px; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 0 0 14px; box-shadow: var(--shadow); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; } .grow { flex: 1 1 auto; }
+  label.field { display: block; font-weight: 600; margin: 10px 0 6px; }
+  select, input[type=text], input[type=password], textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 80px; resize: vertical; }
+  .grid4 { display: grid; grid-template-columns: repeat(3, 1fr) 2fr; gap: 10px; }
+  @media (max-width: 560px) { .grid4 { grid-template-columns: 1fr 1fr; } }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+  button.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); font-weight: 700; }
+  button.ghost { background: transparent; } button.danger { color: var(--bad); } button:disabled { opacity: .5; cursor: default; }
+  button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); font-weight: 700; }
+  .big { width: 100%; padding: 13px; font-size: 1.05rem; }
+  .tag { display: inline-block; font-size: .8rem; padding: 2px 8px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); } .tag.bad { background: var(--bad-soft); color: var(--bad); }
+  .content { white-space: pre-wrap; word-break: break-word; font-size: 1.1rem; }
+  .content img, .roundimg { max-width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; margin: 8px 0; background: #fff; }
+  .comment { border-bottom: 1px solid var(--line); padding: 10px 0; display: flex; gap: 10px; align-items: flex-start; }
+  .comment:last-child { border-bottom: 0; }
+  .comment .body { flex: 1 1 auto; word-break: break-word; }
+  .comment.reflected { background: var(--ok-soft); border-radius: 10px; padding: 10px; margin: 4px 0; border-bottom: 0; }
+  .comment.hiddenc { opacity: .45; }
+  .like { min-width: 64px; } .like.liked { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+  .bar { display: grid; grid-template-columns: 70px 1fr 40px; gap: 8px; align-items: center; margin: 5px 0; font-size: .95rem; }
+  .track { height: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; background: var(--brand); border-radius: 999px; transition: width .4s; }
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  canvas { width: 100%; max-width: 640px; aspect-ratio: 16/10; border: 1px solid var(--line); border-radius: 10px; background: #fff; touch-action: none; display: block; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 50; max-width: calc(100% - 32px); }
+  .hidden { display: none !important; } .center { text-align: center; }
+  .banner { padding: 10px 14px; border-radius: 10px; background: var(--warn-soft); margin-bottom: 14px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .stat b { font-size: 1.5rem; display: block; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <h1>💬 댓글 주문형 라이브</h1>
+  <div id="setupWarn" class="card hidden">
+    <h2>설정이 필요해요</h2>
+    <p>이 파일 아래쪽의 <code>API_URL</code>에 앱스스크립트 웹 앱 주소를 넣어 주세요. (README 참고)</p>
+  </div>
+
+  <!-- 학생 로그인 -->
+  <section id="loginView" class="card hidden">
+    <h2>로그인</h2>
+    <p class="muted">학년, 반, 번호, 이름을 입력하고 들어가요.</p>
+    <div class="grid4">
+      <div><label class="field" for="lgGrade">학년</label><select id="lgGrade"></select></div>
+      <div><label class="field" for="lgClass">반</label><select id="lgClass"></select></div>
+      <div><label class="field" for="lgNumber">번호</label><select id="lgNumber"></select></div>
+      <div><label class="field" for="lgName">이름</label><input id="lgName" type="text" maxlength="10" autocomplete="off" placeholder="이름"></div>
+    </div>
+    <p></p><button id="lgBtn" class="primary big">들어가기</button>
+    <p class="center"><a href="#" id="toTeacher" class="muted">선생님(생산자)으로 들어가기</a></p>
+  </section>
+
+  <section id="tLoginView" class="card hidden" style="max-width:420px">
+    <h2>선생님 로그인</h2>
+    <label class="field" for="pw">비밀번호</label><input id="pw" type="password">
+    <p></p><button id="pwBtn" class="primary big">들어가기</button>
+    <p class="center"><a href="#" id="toStudent" class="muted">학생으로 들어가기</a></p>
+  </section>
+
+  <!-- 학생 화면 -->
+  <section id="studentView" class="hidden">
+    <div class="row muted" style="margin-bottom:10px"><b class="grow" id="meLabel"></b><button class="ghost" id="logoutBtn">로그아웃</button></div>
+    <div id="sBanner"></div>
+    <div id="sRound" class="card"></div>
+    <div id="sCompose" class="card hidden">
+      <label class="field" for="cText">✍️ 생산자에게 요청 댓글 달기 <span class="muted" id="cLeft"></span></label>
+      <textarea id="cText" maxlength="120" placeholder="예: 다음 장면에서는 주인공이 친구에게 먼저 사과하면 좋겠어요!"></textarea>
+      <p></p><button id="cBtn" class="primary big">댓글 달기</button>
+    </div>
+    <div id="sReflect" class="card hidden">
+      <label class="field" for="rText">🪞 내 댓글(또는 친구들의 댓글)이 작품을 어떻게 바꿨나요?</label>
+      <textarea id="rText" maxlength="200" placeholder="예: 내가 요청한 대로 강아지가 등장해서, 독자도 작품을 함께 만든다는 느낌이 들었다."></textarea>
+      <p></p><button id="rBtn" class="primary big">성찰 보내기</button>
+    </div>
+    <div class="card"><div class="row"><h2 class="grow" style="margin:0">댓글</h2>
+      <button class="ghost" data-sort="likes">공감순</button><button class="ghost" data-sort="new">최신순</button></div>
+      <div id="sComments"></div></div>
+  </section>
+
+  <!-- 교사(생산자) 화면 -->
+  <section id="teacherView" class="hidden">
+    <div class="card row">
+      <b>반</b><span id="classBtns" class="row"></span>
+      <button id="neisBtn" class="ghost">📅 오늘 시간표로 찾기</button><span id="neisOut" class="muted"></span>
+      <span class="grow"></span>
+      <button id="tabLive" class="on">진행</button><button id="tabReport">📊 참여 분석</button>
+    </div>
+    <div id="liveTab">
+      <div class="card row">
+        <span class="tag" id="tPhase"></span><span class="grow"></span>
+        <button data-phase="comment">💬 댓글 받기</button><button data-phase="closed">🔒 댓글 닫기</button>
+        <button data-phase="reflection">🪞 성찰 쓰기</button><button data-phase="wait">⏸ 대기</button>
+      </div>
+      <div class="layout">
+        <div>
+          <div class="card">
+            <h2>새 회차 올리기 (생산자)</h2>
+            <p class="muted">학생들이 고른 요청 댓글을 반영해서 다음 장면을 올려요. 올리면 새 회차의 댓글 받기가 바로 시작돼요.</p>
+            <label class="field" for="nText">장면 설명 / 이야기</label>
+            <textarea id="nText" maxlength="500" placeholder="예: [2회] 여러분의 요청대로, 주인공은 급식실에서 처음 보는 친구에게 말을 걸었어요…"></textarea>
+            <div class="row" style="margin-top:8px"><span class="muted">소재 불러오기(나이스):</span>
+              <button class="ghost" data-idea="meal">🍱 오늘 급식</button><button class="ghost" data-idea="schedule">🗓 학교 행사</button></div>
+            <label class="field">그림 (선택)</label>
+            <canvas id="pad" width="640" height="400"></canvas>
+            <div class="row" style="margin-top:8px">
+              <button class="ghost" data-color="#1d2433">⚫</button><button class="ghost" data-color="#e03131">🔴</button><button class="ghost" data-color="#1971c2">🔵</button>
+              <button class="ghost" data-color="#ffffff">🧽 지우개</button>
+              <label class="muted">굵기 <input id="penSize" type="range" min="2" max="18" value="5"></label>
+              <label class="ghost"><input id="imgFile" type="file" accept="image/*" style="max-width:190px"></label>
+              <button class="ghost danger" id="clearPad">전부 지우기</button>
+            </div>
+            <p></p><button id="newRoundBtn" class="primary big">🚀 새 회차 올리기</button>
+          </div>
+          <div class="card" id="tRound"></div>
+        </div>
+        <div class="card">
+          <div class="row"><h2 class="grow" style="margin:0">이번 회차 요청 댓글</h2><span class="muted" id="tCount"></span></div>
+          <p class="muted">반영할 댓글에 ✨를 누르면 학생 화면에 '반영됨'이 표시돼요.</p>
+          <div id="tComments"></div>
+        </div>
+      </div>
+    </div>
+    <div id="reportTab" class="hidden"></div>
+  </section>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* ───── 설정: 앱스스크립트 [배포 > 웹 앱] 주소를 넣으세요 ───── */
+var API_URL = 'https://script.google.com/macros/s/여기에_배포_ID/exec';
+var POLL_MS = 3000;
+/* ─────────────────────────────────────────────────────────── */
+
+var CONFIG = { GRADES: [1], CLASS_COUNT: 4, MAX_NUMBER: 20 };
+var me = null, token = null, classNo = 1, st = null, sortBy = 'likes', imgCache = {}, pollTimer = null;
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function toast(m) { var t = $('toast'); t.textContent = m; t.classList.remove('hidden'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.add('hidden'); }, 2800); }
+function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+function show(id) { ['loginView', 'tLoginView', 'studentView', 'teacherView'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); $('wrap').classList.toggle('wide', id === 'teacherView'); }
+
+function api(action, payload) {
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: action, payload: payload || {} }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (!j.ok) throw new Error(j.error); return j.data; });
+}
+function fail(e) { if (/만료/.test(e.message) && token) { store('a2_token', null); location.reload(); } else toast(e.message || '연결이 잠깐 끊겼어요.'); }
+function opts(sel, list, suffix) { sel.innerHTML = '<option value="">선택</option>' + list.map(function (n) { return '<option value="' + n + '">' + n + suffix + '</option>'; }).join(''); }
+function range(a, b) { var o = []; for (var i = a; i <= b; i++) o.push(i); return o; }
+
+// ───── 시작 ─────
+function boot() {
+  if (/여기에_배포_ID/.test(API_URL)) { $('setupWarn').classList.remove('hidden'); return; }
+  api('config').then(function (c) { CONFIG = c; }).catch(function () {}).then(function () {
+    opts($('lgGrade'), CONFIG.GRADES, '학년'); opts($('lgClass'), range(1, CONFIG.CLASS_COUNT), '반'); opts($('lgNumber'), range(1, CONFIG.MAX_NUMBER), '번');
+    if (CONFIG.GRADES.length === 1) $('lgGrade').value = CONFIG.GRADES[0];
+    token = store('a2_token'); me = store('a2_profile');
+    if (token) startTeacher(); else if (me && me.key) startStudent(); else show('loginView');
+  });
+}
+
+$('toTeacher').onclick = function (e) { e.preventDefault(); show('tLoginView'); };
+$('toStudent').onclick = function (e) { e.preventDefault(); show('loginView'); };
+$('lgBtn').onclick = function () {
+  var p = { grade: $('lgGrade').value, classNo: $('lgClass').value, number: $('lgNumber').value, name: $('lgName').value.trim() };
+  if (!p.grade || !p.classNo || !p.number || !p.name) return toast('학년, 반, 번호, 이름을 모두 입력해 주세요.');
+  $('lgBtn').disabled = true;
+  api('login', { profile: p }).then(function (prof) { me = prof; store('a2_profile', prof); startStudent(); }).catch(fail).then(function () { $('lgBtn').disabled = false; });
+};
+$('lgName').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('lgBtn').click(); });
+$('pwBtn').onclick = function () { api('teacherLogin', { password: $('pw').value }).then(function (t) { token = t; store('a2_token', t); startTeacher(); }).catch(fail); };
+$('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pwBtn').click(); });
+$('logoutBtn').onclick = function () { store('a2_profile', null); location.reload(); };
+
+function loop(fn) { clearTimeout(pollTimer); fn().catch(function () {}).then(function () { pollTimer = setTimeout(function () { loop(fn); }, POLL_MS + Math.random() * 600); }); }
+
+function roundImage(round, el) {
+  if (imgCache[round]) { el.src = imgCache[round]; return; }
+  api('a2Image', { classNo: classNo, round: round }).then(function (d) { if (d) { imgCache[round] = d; el.src = d; } }).catch(function () {});
+}
+function roundHtml(r, id) {
+  return '<div class="row"><span class="tag">' + r.no + '회차</span></div><div class="content">' + esc(r.text) + '</div>' + (r.hasImage ? '<img class="roundimg" id="' + id + '" alt="' + r.no + '회차 그림">' : '');
+}
+
+// ───── 학생 ─────
+function startStudent() {
+  show('studentView'); classNo = me.classNo;
+  $('meLabel').textContent = me.grade + '학년 ' + me.classNo + '반 ' + me.number + '번 ' + me.name;
+  loop(function () { return api('a2State', { classNo: classNo }).then(function (d) { st = d; renderStudent(); }); });
+}
+var lastRoundShown = -1;
+function renderStudent() {
+  var banners = { wait: '선생님(생산자)이 콘텐츠를 준비하고 있어요.', closed: '이번 회차 댓글이 닫혔어요. 생산자가 다음 장면을 만들고 있어요!', reflection: '오늘 활동을 돌아보며 성찰을 써 주세요.', comment: '' };
+  $('sBanner').innerHTML = banners[st.phase] ? '<div class="banner">' + banners[st.phase] + '</div>' : '';
+  var cur = st.rounds.filter(function (r) { return r.no === st.round; })[0];
+  if (st.round !== lastRoundShown) {
+    lastRoundShown = st.round;
+    var past = st.rounds.filter(function (r) { return r.no < st.round; }).reverse();
+    $('sRound').innerHTML = cur ? roundHtml(cur, 'curImg') + (past.length ? '<details style="margin-top:10px"><summary>지난 회차 보기 (' + past.length + ')</summary>' +
+      past.map(function (r) { return '<div style="margin-top:10px">' + roundHtml(r, 'img' + r.no) + '</div>'; }).join('') + '</details>' : '') : '<p class="muted">아직 올라온 콘텐츠가 없어요.</p>';
+    if (cur && cur.hasImage) roundImage(cur.no, $('curImg'));
+    past.forEach(function (r) { if (r.hasImage) roundImage(r.no, $('img' + r.no)); });
+  }
+  var mineCount = st.comments.filter(function (c) { return c.round === st.round && c.number === me.number; }).length;
+  $('sCompose').classList.toggle('hidden', st.phase !== 'comment');
+  $('cLeft').textContent = '(' + Math.max(0, st.maxPerRound - mineCount) + '개 더 달 수 있어요)';
+  $('sReflect').classList.toggle('hidden', st.phase !== 'reflection');
+  var list = st.comments.filter(function (c) { return c.round === st.round; });
+  list.sort(sortBy === 'likes' ? function (a, b) { return b.likers.length - a.likers.length || b.at - a.at; } : function (a, b) { return b.at - a.at; });
+  $('sComments').innerHTML = list.length ? list.map(function (c) {
+    var liked = c.likers.indexOf(me.key) >= 0, mine = c.number === me.number;
+    return '<div class="comment' + (c.reflected ? ' reflected' : '') + '"><div class="body"><b>' + c.number + '번 ' + esc(c.name) + '</b> ' +
+      (c.reflected ? '<span class="tag ok">✨ 반영됨</span> ' : '') + (mine ? '<span class="tag">내 댓글</span>' : '') + '<br>' + esc(c.text) + '</div>' +
+      '<button class="like' + (liked ? ' liked' : '') + '" data-like="' + c.id + '"' + (mine ? ' disabled' : '') + '>' + (liked ? '♥' : '♡') + ' ' + c.likers.length + '</button></div>';
+  }).join('') : '<p class="muted">아직 댓글이 없어요. 첫 댓글을 달아 보세요!</p>';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sort]'), function (b) { b.classList.toggle('on', b.getAttribute('data-sort') === sortBy); });
+}
+$('sComments').onclick = function (e) {
+  var b = e.target.closest('[data-like]'); if (!b) return; b.disabled = true;
+  api('a2Like', { profile: me, commentId: b.getAttribute('data-like') }).then(function () { return api('a2State', { classNo: classNo }); })
+    .then(function (d) { st = d; renderStudent(); }).catch(fail);
+};
+Array.prototype.forEach.call(document.querySelectorAll('[data-sort]'), function (b) { b.onclick = function () { sortBy = b.getAttribute('data-sort'); if (st) renderStudent(); }; });
+$('cBtn').onclick = function () {
+  var t = $('cText').value.trim(); if (!t) return toast('댓글을 써 주세요.');
+  $('cBtn').disabled = true;
+  api('a2Comment', { profile: me, text: t }).then(function () { $('cText').value = ''; toast('댓글을 달았어요!'); return api('a2State', { classNo: classNo }); })
+    .then(function (d) { st = d; renderStudent(); }).catch(fail).then(function () { $('cBtn').disabled = false; });
+};
+$('rBtn').onclick = function () {
+  var t = $('rText').value.trim(); if (!t) return toast('성찰을 써 주세요.');
+  $('rBtn').disabled = true;
+  api('a2Reflect', { profile: me, text: t }).then(function () { $('rText').value = ''; toast('보냈어요. 고마워요!'); }).catch(fail).then(function () { $('rBtn').disabled = false; });
+};
+
+// ───── 교사(생산자) ─────
+function startTeacher() {
+  show('teacherView');
+  $('classBtns').innerHTML = range(1, CONFIG.CLASS_COUNT).map(function (i) { return '<button data-c="' + i + '">' + i + '반</button>'; }).join('');
+  classNo = Number(store('a2_class') || 1);
+  loop(tRefresh);
+}
+function pickClass(c) { classNo = Number(c); store('a2_class', classNo); imgCache = {}; lastTRound = -1; tRefresh(); if (!$('reportTab').classList.contains('hidden')) loadReport(); }
+$('classBtns').onclick = function (e) { var c = e.target.getAttribute('data-c'); if (c) pickClass(c); };
+$('neisBtn').onclick = function () {
+  $('neisOut').textContent = '불러오는 중…';
+  api('neisToday', { token: token }).then(function (list) {
+    $('neisOut').innerHTML = list.length ? '오늘 국어: ' + list.map(function (x) { return '<a href="#" data-c="' + x.classNo + '">' + x.period + '교시 ' + x.classNo + '반</a>'; }).join(' · ') : '오늘 1학년 국어 수업이 시간표에 없어요.';
+  }).catch(function (e) { $('neisOut').textContent = e.message; });
+};
+$('neisOut').onclick = function (e) { var c = e.target.getAttribute('data-c'); if (c) { e.preventDefault(); pickClass(c); } };
+function tRefresh() { return api('a2State', { classNo: classNo, token: token }).then(function (d) { st = d; renderTeacher(); }).catch(fail); }
+
+var lastTRound = -1;
+function renderTeacher() {
+  Array.prototype.forEach.call($('classBtns').children, function (b) { b.classList.toggle('on', Number(b.getAttribute('data-c')) === classNo); });
+  var names = { wait: '대기', comment: '댓글 받는 중', closed: '댓글 닫힘', reflection: '성찰 쓰는 중' };
+  $('tPhase').textContent = classNo + '반 · ' + (st.round ? st.round + '회차 · ' : '') + names[st.phase];
+  Array.prototype.forEach.call(document.querySelectorAll('[data-phase]'), function (b) { b.classList.toggle('on', b.getAttribute('data-phase') === st.phase); });
+  var cur = st.rounds.filter(function (r) { return r.no === st.round; })[0];
+  if (st.round !== lastTRound) {
+    lastTRound = st.round;
+    $('tRound').innerHTML = cur ? '<h2>지금 학생에게 보이는 회차</h2>' + roundHtml(cur, 'tImg') : '<p class="muted">아직 올린 회차가 없어요. 왼쪽에서 첫 회차를 올려 주세요.</p>';
+    if (cur && cur.hasImage) roundImage(cur.no, $('tImg'));
+  }
+  var list = st.comments.filter(function (c) { return c.round === st.round; }).sort(function (a, b) { return b.likers.length - a.likers.length || a.at - b.at; });
+  var people = {}; list.forEach(function (c) { people[c.number] = 1; });
+  $('tCount').textContent = list.length + '개 · ' + Object.keys(people).length + '명 참여';
+  $('tComments').innerHTML = list.length ? list.map(function (c) {
+    return '<div class="comment' + (c.reflected ? ' reflected' : '') + (c.hidden ? ' hiddenc' : '') + '"><div class="body"><b>' + c.number + '번 ' + esc(c.name) + '</b> <span class="muted">♥ ' + c.likers.length + '</span>' +
+      (c.hidden ? ' <span class="tag bad">숨김</span>' : '') + '<br>' + esc(c.text) + '</div>' +
+      '<button data-mark="reflected" data-id="' + c.id + '" data-on="' + (!c.reflected) + '" class="' + (c.reflected ? 'on' : '') + '">✨</button>' +
+      '<button data-mark="hidden" data-id="' + c.id + '" data-on="' + (!c.hidden) + '" class="danger">' + (c.hidden ? '보이기' : '숨김') + '</button></div>';
+  }).join('') : '<p class="muted">아직 댓글이 없어요.</p>';
+}
+$('tComments').onclick = function (e) {
+  var b = e.target.closest('[data-mark]'); if (!b) return;
+  api('a2TMark', { token: token, classNo: classNo, commentId: b.getAttribute('data-id'), field: b.getAttribute('data-mark'), on: b.getAttribute('data-on') === 'true' }).then(tRefresh).catch(fail);
+};
+Array.prototype.forEach.call(document.querySelectorAll('[data-phase]'), function (b) {
+  b.onclick = function () { api('a2TPhase', { token: token, classNo: classNo, phase: b.getAttribute('data-phase') }).then(tRefresh).catch(fail); };
+});
+Array.prototype.forEach.call(document.querySelectorAll('[data-idea]'), function (b) {
+  b.onclick = function () {
+    b.disabled = true;
+    api('a2TIdea', { token: token, kind: b.getAttribute('data-idea') }).then(function (t) { var ta = $('nText'); ta.value = (ta.value ? ta.value + '\n' : '') + t; })
+      .catch(fail).then(function () { b.disabled = false; });
+  };
+});
+
+// 그림판
+var pad = $('pad'), ctx = pad.getContext('2d'), drawing = false, dirty = false, color = '#1d2433';
+function clearPad() { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pad.width, pad.height); dirty = false; }
+clearPad();
+function pos(e) { var r = pad.getBoundingClientRect(); return { x: (e.clientX - r.left) * pad.width / r.width, y: (e.clientY - r.top) * pad.height / r.height }; }
+pad.addEventListener('pointerdown', function (e) { drawing = true; pad.setPointerCapture(e.pointerId); var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+pad.addEventListener('pointermove', function (e) {
+  if (!drawing) return; var p = pos(e);
+  ctx.lineTo(p.x, p.y); ctx.strokeStyle = color; ctx.lineWidth = Number($('penSize').value) * (color === '#ffffff' ? 3 : 1); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); dirty = true;
+});
+pad.addEventListener('pointerup', function () { drawing = false; });
+Array.prototype.forEach.call(document.querySelectorAll('[data-color]'), function (b) { b.onclick = function () { color = b.getAttribute('data-color'); }; });
+$('clearPad').onclick = clearPad;
+$('imgFile').onchange = function () {
+  var f = $('imgFile').files[0]; if (!f) return;
+  var img = new Image();
+  img.onload = function () {
+    clearPad();
+    var s = Math.min(pad.width / img.width, pad.height / img.height), w = img.width * s, h = img.height * s;
+    ctx.drawImage(img, (pad.width - w) / 2, (pad.height - h) / 2, w, h); dirty = true; URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(f);
+};
+$('newRoundBtn').onclick = function () {
+  var t = $('nText').value.trim(); if (!t) return toast('장면 설명을 써 주세요.');
+  var image = dirty ? pad.toDataURL('image/jpeg', 0.7) : '';
+  $('newRoundBtn').disabled = true;
+  api('a2TNewRound', { token: token, classNo: classNo, text: t, image: image }).then(function (no) {
+    if (image) imgCache[no] = image;
+    $('nText').value = ''; clearPad(); $('imgFile').value = ''; toast(no + '회차를 올렸어요. 댓글 받기가 시작됐어요!'); return tRefresh();
+  }).catch(fail).then(function () { $('newRoundBtn').disabled = false; });
+};
+
+// 참여 분석
+$('tabLive').onclick = function () { $('tabLive').classList.add('on'); $('tabReport').classList.remove('on'); $('liveTab').classList.remove('hidden'); $('reportTab').classList.add('hidden'); };
+$('tabReport').onclick = function () { $('tabReport').classList.add('on'); $('tabLive').classList.remove('on'); $('liveTab').classList.add('hidden'); $('reportTab').classList.remove('hidden'); loadReport(); };
+function barRows(rows, key, label) {
+  var max = Math.max.apply(null, rows.map(function (r) { return r[key]; }).concat([1]));
+  return '<h2>' + label + '</h2>' + rows.map(function (r) {
+    return '<div class="bar"><span>' + r.round + '회차</span><div class="track"><div class="fill" style="width:' + Math.round(r[key] / max * 100) + '%"></div></div><b>' + r[key] + '</b></div>';
+  }).join('');
+}
+function loadReport() {
+  $('reportTab').innerHTML = '<div class="card muted">불러오는 중…</div>';
+  api('a2TReport', { token: token, classNo: classNo }).then(function (r) {
+    var tot = r.byRound.reduce(function (a, x) { return { c: a.c + x.comments, l: a.l + x.likes, f: a.f + x.reflected }; }, { c: 0, l: 0, f: 0 });
+    $('reportTab').innerHTML =
+      '<div class="card"><div class="row"><h2 class="grow" style="margin:0">' + classNo + '반 수용자 참여 양상</h2><button id="reloadReport" class="ghost">🔄 새로고침</button></div><p></p>' +
+      '<div class="stats"><div class="stat"><span class="muted">참여한 학생</span><b>' + r.participants + '명</b></div><div class="stat"><span class="muted">요청 댓글</span><b>' + tot.c + '개</b></div>' +
+      '<div class="stat"><span class="muted">공감</span><b>' + tot.l + '번</b></div><div class="stat"><span class="muted">작품에 반영</span><b>' + tot.f + '개</b></div></div>' +
+      (r.silent.length ? '<p class="muted">아직 댓글을 달지 않은 번호: ' + r.silent.join(', ') + '번</p>' : '') + '</div>' +
+      '<div class="layout"><div class="card">' + barRows(r.byRound, 'comments', '회차별 댓글 수') + barRows(r.byRound, 'people', '회차별 참여 학생 수') + '</div>' +
+      '<div class="card">' + barRows(r.byRound, 'likes', '회차별 공감 수') + barRows(r.byRound, 'reflected', '회차별 반영된 댓글') + '</div></div>' +
+      '<div class="card"><h2>공감을 가장 많이 받은 댓글</h2>' + (r.top.length ? r.top.map(function (c) {
+        return '<div class="comment"><div class="body"><b>' + c.round + '회차 · ' + c.number + '번 ' + esc(c.name) + '</b> ♥ ' + c.likers.length + (c.reflected ? ' <span class="tag ok">반영됨</span>' : '') + '<br>' + esc(c.text) + '</div></div>';
+      }).join('') : '<p class="muted">없음</p>') + '</div>' +
+      '<div class="card"><h2>학생 성찰 (' + r.reflections.length + ')</h2>' + (r.reflections.length ? r.reflections.map(function (x) {
+        return '<div class="comment"><div class="body"><b>' + x.number + '번 ' + esc(x.name) + '</b><br>' + esc(x.text) + '</div></div>';
+      }).join('') : '<p class="muted">없음</p>') + '</div>' +
+      '<div class="card"><h2>기록 지우기</h2><p class="muted">단원이 끝나면 이 반의 회차·댓글·공감·성찰 기록을 모두 지울 수 있어요. 되돌릴 수 없어요.</p><button id="resetBtn" class="danger">' + classNo + '반 기록 모두 지우기</button></div>';
+    $('reloadReport').onclick = loadReport;
+    $('resetBtn').onclick = function () {
+      if (!confirm(classNo + '반의 댓글 주문형 기록을 모두 지울까요? 되돌릴 수 없어요.')) return;
+      api('a2TReset', { token: token, classNo: classNo }).then(function () { toast('지웠어요.'); imgCache = {}; lastTRound = -1; loadReport(); tRefresh(); }).catch(fail);
+    };
+  }).catch(fail);
+}
+
+boot();
+</script>
+</body>
+</html>
